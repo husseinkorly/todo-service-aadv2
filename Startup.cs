@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using TodoApi.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+
 
 namespace todoservice
 {
@@ -23,10 +23,7 @@ namespace todoservice
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<TodoContext>(opt => opt.UseInMemoryDatabase("TodoList"));
-            
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddMicrosoftIdentityWebApi(Configuration);
-
+            services.AddMicrosoftIdentityWebApiAuthentication(Configuration);
             services.AddControllers();
         }
 
