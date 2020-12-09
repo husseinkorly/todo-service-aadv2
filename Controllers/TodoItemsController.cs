@@ -1,9 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using TodoApi.Models;
 
 namespace todoservice.Controllers
@@ -13,10 +17,17 @@ namespace todoservice.Controllers
     public class TodoItemsController : ControllerBase
     {
         private readonly TodoContext _context;
+        private readonly IConfidentialClientApplication app;
 
         public TodoItemsController(TodoContext context)
         {
             _context = context;
+            X509Store store = new X509Store("MY", StoreLocation.LocalMachine);
+            store.Open(OpenFlags.ReadOnly);
+            X509Certificate2 cert = store.Certificates.Find(X509FindType.FindByThumbprint, "<verify thumbprint>", false)[0];
+            app = ConfidentialClientApplicationBuilder.Create("<client id>")
+                 .WithCertificate(cert)
+                 .Build();
         }
 
         // GET: api/TodoItems
@@ -24,6 +35,13 @@ namespace todoservice.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems()
         {
+            JwtSecurityToken decryptedToken = HttpContext.Items["decryptedToken"] as JwtSecurityToken;
+            string token = decryptedToken.InnerToken == null ? decryptedToken.RawData : decryptedToken.InnerToken.RawData;
+
+            UserAssertion userAssertion = new UserAssertion(token, "urn:ietf:params:oauth:grant-type:jwt-bearer");
+            var scopes = new List<string> { "https://test.invoice.microsoft.com/.default" };
+            var result = this.app.AcquireTokenOnBehalfOf(scopes, userAssertion).ExecuteAsync().GetAwaiter().GetResult();
+
             return await _context.TodoItems.ToListAsync();
         }
 
